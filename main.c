@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
         queue_enqueue(readyq, &arr_job[i]);
     }
 
-    (void) srand(12345);
+    (void) srandom(12345);
     while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
         struct job* ptr;
         int same_tick = 0;
@@ -133,12 +133,12 @@ int main(int argc, char *argv[]) {
 
 
             if (cpu->time_remain > 2) {
-                int r = rand();
+                int r = random();
 
                 if (cpu->prob_block > (double)r / RAND_MAX ) {
                     //block for i/o
 
-                    int r = rand();
+                    int r = random();
 
                     cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
 
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
                     if (iodev->time_remain == 0) {
                         io1->stop_run = tick + 1;
                     } else {
-                        int r = rand();
+                        int r = random();
                         io1->stop_run = tick + (r % 30 + 1) - 1;
                     }
 
