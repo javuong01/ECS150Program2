@@ -125,14 +125,14 @@ int main(int argc, char *argv[]) {
         int same_tick = 0;
 
 
-        if (strcmp(cpu1-> status, "idle") == 0 && (queue_length(readyq) > 0)) {
+        if (strcmp(cpu1->status, "idle") == 0 && (queue_length(readyq) > 0)) {
             queue_dequeue(readyq, (void**)&ptr);
             cpu = ptr;
             cpu->given_cpu++;  // cpu disp stat (increment for when given cpu)
             cpu1->status = "active";
 
 
-            if (cpu->time_remain > 1) {
+            if (cpu->time_remain > 2) {
                 int r = rand();
 
                 if (cpu->prob_block > (double)r / RAND_MAX ) {
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
             }
         } else if (cpu != NULL) {
             cpu->time_remain--;
-            //printf("%d tick  cpu with remianing runtime %d\n",tick, cpu->time_remain);
+            //printf("%d tick cpu with remianing runtime %d\n",tick, cpu->time_remain);
             if (cpu->time_remain == 0) {
                 //printf("PRINT stuff\n");
                 cpu->time_completed = tick; // when done stat
@@ -163,6 +163,7 @@ int main(int argc, char *argv[]) {
                 cpu1->status = "idle";
             }
         }
+
         if (tick == cpu1->stop_run && cpu->time_remain > 0) {
             queue_enqueue(ioq, cpu);
             cpu = NULL;
