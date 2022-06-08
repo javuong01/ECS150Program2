@@ -440,7 +440,7 @@ int main(int argc, char *argv[]) {
     printf("Total time spent idle: %d\n", cpu_idle);
     printf("CPU utilization: %.2f\n", (double)((double)cpu_busy/(double)total_time));
     printf("Number of dispatches: %d\n", cpu_dispatch);
-    printf("Overall throughput: %.2f\n", (double)(3/(double)total_time));  // need to change to include variable amount of processes
+    printf("Overall throughput: %.2f\n", (double)((double)jobCounter/(double)total_time));  // need to change to include variable amount of processes
 
     /* print i/o statistics */
     printf("\nI/O device:\n");
