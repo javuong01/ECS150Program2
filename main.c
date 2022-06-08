@@ -41,11 +41,11 @@ struct job {
 int main(int argc, char *argv[]) {
     /*
     int n = 10;
-    (void) srand(12345);
+    (void) srandom(12345);
     for (int i=0; i < n; i++) {
-      int r = rand();
+      int r = random();
       printf("%d\n", r);
-      printf("f: %f\n", (double)r / RAND_MAX);
+      printf("f: %f\n", (double)r / random_MAX);
       printf("in: %d\n", (r % 5 + 1));
       printf("in: %d\n", (r % 30 + 1));
     }
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
         queue_enqueue(readyq, &arr_job[i]);
     }
 
-    (void) srand(12345);
+    (void) srandom(12345);
     int issuecount = 0;
     if (fcfs) {
         while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
@@ -146,22 +146,21 @@ int main(int argc, char *argv[]) {
                 cpu1->status = "active";
 
 
-                if (cpu->time_remain > 2) {
-                    int r = rand();
+                if (cpu->time_remain > 1) {
+                    int r = random();
 
-                    if (cpu->prob_block > (double)r / RAND_MAX ) {
+                    if (cpu->prob_block > (double)r / random_MAX ) {
                         //block for i/o
 
-                        int r = rand();
+                        int r = random();
 
                         cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
 
                     }
                 } else {
                     if (cpu->time_remain == 0) {
-                        //printf("PRINT stuff\n");
                         cpu->time_completed = tick; // when done stat
-                        //printf("process ended? 1\n");
+                        printf("process ended1: %s\n", cpu->name);
                         cpu = NULL;
                         cpu1->status = "idle";
                     }
@@ -172,7 +171,7 @@ int main(int argc, char *argv[]) {
                 if (cpu->time_remain == 0) {
                     //printf("PRINT stuff\n");
                     cpu->time_completed = tick; // when done stat
-                    //printf("process ended? 2\n");
+                    printf("process ended2: %s\n", cpu->name);
                     cpu = NULL;
                     cpu1->status = "idle";
                 }
@@ -205,27 +204,24 @@ int main(int argc, char *argv[]) {
                     }
 
                     if (io1->stop_run == -1) {
-                        //random
+                        //randomom
                         //i/o in i/o
                         if (iodev->time_remain == 0) {
                             io1->stop_run = tick + 1;
                         } else {
-                            int r = rand();
+                            int r = random();
                             io1->stop_run = tick + (r % 30 + 1) - 1;
                         }
 
                     }
 
-                    if (tick == io1->stop_run) {
-                        queue_enqueue(readyq, iodev);
-                        iodev = NULL;
-                        io1->status = "idle";
-                        io1->stop_run = -1;
-                    }
-
-
-
-                    //printf("%d tick   has %d time units on i/o device\n", tick, io1->stop_run - tick);
+                    printf("%d tick   has %d time units on i/o device\n", tick, io1->stop_run - tick);
+                }
+                if (tick == io1->stop_run) {
+                    queue_enqueue(readyq, iodev);
+                    iodev = NULL;
+                    io1->status = "idle";
+                    io1->stop_run = -1;
                 }
             }
 
@@ -273,12 +269,12 @@ int main(int argc, char *argv[]) {
                 currProcessIndex+=1;
 
                 if (cpu->time_remain > 1) {
-                    int r = rand();
+                    int r = random();
 
-                    if (cpu->prob_block > (double) r / RAND_MAX) {
+                    if (cpu->prob_block > (double) r / random_MAX) {
                         //block for i/o
 
-                        int r = rand();
+                        int r = random();
 
                         cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
 
@@ -337,12 +333,12 @@ int main(int argc, char *argv[]) {
                     }
 
                     if (io1->stop_run == -1) {
-                        //random
+                        //randomom
                         //i/o in i/o
                         if (iodev->time_remain == 0) {
                             io1->stop_run = tick + 1;
                         } else {
-                            int r = rand();
+                            int r = random();
                             io1->stop_run = tick + (r % 30 + 1) - 1;
                         }
 
