@@ -9,6 +9,7 @@ editor    5   0.87          biggie    20    0.99
 compiler  40  0.53          nextone   10    0.99
 adventure 30  0.72
 */
+#define DEBUG 1
 
 struct cpu {
     char *status;
@@ -233,8 +234,8 @@ int main(int argc, char *argv[]) {
         // TODO: implement rr
         int q = 5; // how many units to run for rr
         int localtick = 0;
-        int currProcessIndex = 0;
         while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
+            if (DEBUG) {printf("Tick: %d - ", tick);}
             struct job *ptr;
             int same_tick = 0;
 
@@ -244,7 +245,7 @@ int main(int argc, char *argv[]) {
                     localtick = 0;
                     continue;
                 }
-                printf("Putting \"%s\" process back into queue\n", cpu->name);
+                if (DEBUG) {printf("Putting \"%s\" process back into queue - ", cpu->name);}
                 int index;
                 // finds which job we're doing currently
                 for (int i = 0; i < jobCounter; i++) {
@@ -264,9 +265,9 @@ int main(int argc, char *argv[]) {
             if (strcmp(cpu1->status, "idle") == 0 && (queue_length(readyq) > 0)) {
                 queue_dequeue(readyq, (void **) &ptr);
                 cpu = ptr;
+                if (DEBUG) {printf("working on %s - ", cpu->name);}
                 cpu->given_cpu++;  // cpu disp stat (increment for when given cpu)
                 cpu1->status = "active";
-                currProcessIndex+=1;
 
                 if (cpu->time_remain > 1) {
                     int r = random();
@@ -277,13 +278,12 @@ int main(int argc, char *argv[]) {
                         int r = random();
 
                         cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
-
+                        if (DEBUG) {printf("%s stoppin at tick=%d - ", cpu->name, cpu1->stop_run);}
                     }
                 } else {
                     if (cpu->time_remain == 0) {
-                        printf("PRINT stuff\n");
                         cpu->time_completed = tick; // when done stat
-                        printf("process ended? 1\n");
+                        if (DEBUG) {printf("%s ended1 - ", cpu->name);};
                         cpu = NULL;
                         cpu1->status = "idle";
                         localtick = 0;
@@ -291,21 +291,18 @@ int main(int argc, char *argv[]) {
                 }
             } else if (cpu != NULL) {
                 cpu->time_remain--;
-                printf("%d tick cpu with remianing runtime %d\n",tick, cpu->time_remain);
+                if (DEBUG) {printf("%d tick with remianing runtime %d - ",tick, cpu->time_remain);}
                 if (cpu->time_remain == 0) {
-                    printf("PRINT stuff\n");
                     cpu->time_completed = tick; // when done stat
-                    printf("process ended? 2\n");
+                    if (DEBUG) {printf("%s ended2 - ", cpu->name);}
                     cpu = NULL;
                     cpu1->status = "idle";
                     localtick = 0;
                 }
             }
-            if (cpu == NULL) {
-                printf("issue here");
-                issuecount+=1;
-            }
+
             if (tick == cpu1->stop_run && cpu->time_remain > 0) {
+                if (DEBUG) {printf("IO on %s - ", cpu->name);}
                 queue_enqueue(ioq, cpu);
                 cpu = NULL;
                 cpu1->status = "idle";
@@ -442,4 +439,10 @@ int main(int argc, char *argv[]) {
 
 
     return 0;
+}
+
+void debug(char *string) {
+    if (DEBUG) {
+        printf("%s", string);
+    }
 }
