@@ -42,11 +42,11 @@ struct job {
 int main(int argc, char *argv[]) {
     /*
     int n = 10;
-    (void) srandom(12345);
+    (void) srand(12345);
     for (int i=0; i < n; i++) {
-      int r = random();
+      int r = rand();
       printf("%d\n", r);
-      printf("f: %f\n", (double)r / random_MAX);
+      printf("f: %f\n", (double)r / RAND_MAX);
       printf("in: %d\n", (r % 5 + 1));
       printf("in: %d\n", (r % 30 + 1));
     }
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
         queue_enqueue(readyq, &arr_job[i]);
     }
 
-    (void) srandom(12345);
+    (void) srand(12345);
     int issuecount = 0;
     if (fcfs) {
         while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
@@ -148,12 +148,12 @@ int main(int argc, char *argv[]) {
 
 
                 if (cpu->time_remain > 1) {
-                    int r = random();
+                    int r = rand();
 
-                    if (cpu->prob_block > (double)r / random_MAX ) {
+                    if (cpu->prob_block > (double)r / RAND_MAX ) {
                         //block for i/o
 
-                        int r = random();
+                        int r = rand();
 
                         cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
 
@@ -205,12 +205,12 @@ int main(int argc, char *argv[]) {
                     }
 
                     if (io1->stop_run == -1) {
-                        //randomom
+                        //random
                         //i/o in i/o
                         if (iodev->time_remain == 0) {
                             io1->stop_run = tick + 1;
                         } else {
-                            int r = random();
+                            int r = rand();
                             io1->stop_run = tick + (r % 30 + 1) - 1;
                         }
 
@@ -235,7 +235,7 @@ int main(int argc, char *argv[]) {
         int q = 5; // how many units to run for rr
         int localtick = 0;
         while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
-            if (DEBUG) {printf("Tick: %d - ", tick);}
+            if (DEBUG) {printf("\nTick: %d - ", tick);}
             struct job *ptr;
             int same_tick = 0;
 
@@ -270,12 +270,12 @@ int main(int argc, char *argv[]) {
                 cpu1->status = "active";
 
                 if (cpu->time_remain > 1) {
-                    int r = random();
+                    int r = rand();
 
-                    if (cpu->prob_block > (double) r / random_MAX) {
+                    if (cpu->prob_block > (double) r / RAND_MAX) {
                         //block for i/o
 
-                        int r = random();
+                        int r = rand();
 
                         cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
                         if (DEBUG) {printf("%s stoppin at tick=%d - ", cpu->name, cpu1->stop_run);}
@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
                 }
             } else if (cpu != NULL) {
                 cpu->time_remain--;
-                if (DEBUG) {printf("%d tick with remianing runtime %d - ",tick, cpu->time_remain);}
+                if (DEBUG) {printf("Remaining runtime %d - ", cpu->time_remain);}
                 if (cpu->time_remain == 0) {
                     cpu->time_completed = tick; // when done stat
                     if (DEBUG) {printf("%s ended2 - ", cpu->name);}
@@ -330,18 +330,18 @@ int main(int argc, char *argv[]) {
                     }
 
                     if (io1->stop_run == -1) {
-                        //randomom
+                        //random
                         //i/o in i/o
                         if (iodev->time_remain == 0) {
                             io1->stop_run = tick + 1;
                         } else {
-                            int r = random();
+                            int r = rand();
                             io1->stop_run = tick + (r % 30 + 1) - 1;
                         }
 
                     }
                     if (tick == 33);
-                    printf("%d tick   has %d time units on i/o device\n", tick, io1->stop_run - tick);
+                    if (DEBUG) {printf("%d time units on i/o device - ", io1->stop_run - tick);}
                 }
                 if (tick == io1->stop_run) {
                     queue_enqueue(readyq, iodev);
