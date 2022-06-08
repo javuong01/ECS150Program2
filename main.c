@@ -42,11 +42,11 @@ struct job {
 int main(int argc, char *argv[]) {
     /*
     int n = 10;
-    (void) srandom(12345);
+    (void) srand(12345);
     for (int i=0; i < n; i++) {
-      int r = random();
+      int r = rand();
       printf("%d\n", r);
-      printf("f: %f\n", (double)r / random_MAX);
+      printf("f: %f\n", (double)r / RAND_MAX);
       printf("in: %d\n", (r % 5 + 1));
       printf("in: %d\n", (r % 30 + 1));
     }
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
         queue_enqueue(readyq, &arr_job[i]);
     }
 
-    (void) srandom(12345);
+    (void) srand(12345);
     int issuecount = 0;
     if (fcfs) {
         while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
@@ -148,12 +148,12 @@ int main(int argc, char *argv[]) {
 
 
                 if (cpu->time_remain > 1) {
-                    int r = random();
+                    int r = rand();
 
-                    if (cpu->prob_block > (double)r / random_MAX ) {
+                    if (cpu->prob_block > (double)r / RAND_MAX ) {
                         //block for i/o
 
-                        int r = random();
+                        int r = rand();
 
                         cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
 
@@ -205,12 +205,12 @@ int main(int argc, char *argv[]) {
                     }
 
                     if (io1->stop_run == -1) {
-                        //randomom
+                        //random
                         //i/o in i/o
                         if (iodev->time_remain == 0) {
                             io1->stop_run = tick + 1;
                         } else {
-                            int r = random();
+                            int r = rand();
                             io1->stop_run = tick + (r % 30 + 1) - 1;
                         }
 
@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
         }
     } else if (rr) {
         // TODO: implement rr
-        int q = 5; // how many units to run for rr
+        int quantum = 5; // how many units to run for rr
         int localtick = 0;
         while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
             if (DEBUG) {printf("\nTick: %d - ", tick);}
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
             int same_tick = 0;
 
             // every 5 ticks while a job is running (resets if a job blocks and a new one takes over), put it back in queue
-            if (localtick > 5) {
+            if (localtick > quantum) {
                 if (cpu == NULL) {
                     localtick = 0;
                     continue;
@@ -248,19 +248,12 @@ int main(int argc, char *argv[]) {
                 if (DEBUG) {printf("Putting \"%s\" process back into queue - ", cpu->name);}
                 int index;
                 // finds which job we're doing currently
-                for (int i = 0; i < jobCounter; i++) {
-                    if (strcmp(cpu->name, arr_job[i].name) == 0) {
-                        index = i;
-                        break;
-                    }
-                }
-                queue_enqueue(readyq, &arr_job[index]);
+
+                queue_enqueue(readyq, cpu);
+                cpu = NULL;
                 cpu1->status = "idle";
                 localtick = 0;
-                tick++;
-                continue;
             }
-            localtick+=1;
 
             if (strcmp(cpu1->status, "idle") == 0 && (queue_length(readyq) > 0)) {
                 queue_dequeue(readyq, (void **) &ptr);
@@ -270,14 +263,14 @@ int main(int argc, char *argv[]) {
                 cpu1->status = "active";
 
                 if (cpu->time_remain > 1) {
-                    int r = random();
+                    int r = rand();
 
-                    if (cpu->prob_block > (double) r / random_MAX) {
+                    if (cpu->prob_block > (double) r / RAND_MAX) {
                         //block for i/o
 
-                        int r = random();
+                        int r = rand();
 
-                        cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
+                        cpu1->stop_run = tick + (r % quantum + 1) - 1;
                         if (DEBUG) {printf("%s stoppin at tick=%d - ", cpu->name, cpu1->stop_run);}
                     }
                 } else {
@@ -322,6 +315,7 @@ int main(int argc, char *argv[]) {
                         iodev = ptr;
                         iodev->io_blocks++; // i/o disp stat (increment for when blocked for i/o)
                         io1->status = "active";
+                        if (DEBUG) {printf("%s in IOq for %d ticks - ", iodev->name, io1->stop_run);}
                         iodev->time_remain--;
                     }
 
@@ -330,12 +324,12 @@ int main(int argc, char *argv[]) {
                     }
 
                     if (io1->stop_run == -1) {
-                        //randomom
+                        //random
                         //i/o in i/o
                         if (iodev->time_remain == 0) {
                             io1->stop_run = tick + 1;
                         } else {
-                            int r = random();
+                            int r = rand();
                             io1->stop_run = tick + (r % 30 + 1) - 1;
                         }
 
@@ -348,10 +342,13 @@ int main(int argc, char *argv[]) {
                     iodev = NULL;
                     io1->status = "idle";
                     io1->stop_run = -1;
+                    localtick = 0;
                 }
             }
 
             tick++;
+            localtick+=1;
+            if (tick > 1000) {break;}
         }
     } else {
         fprintf(stderr, "Unknown error, neither fcfs nor rr true\n");
