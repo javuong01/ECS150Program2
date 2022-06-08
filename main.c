@@ -9,7 +9,7 @@ editor    5   0.87          biggie    20    0.99
 compiler  40  0.53          nextone   10    0.99
 adventure 30  0.72
 */
-#define DEBUG 1
+#define DEBUG 0
 
 struct cpu {
     char *status;
@@ -191,6 +191,26 @@ int main(int argc, char *argv[]) {
                     if (strcmp(io1->status, "active") == 0){
                         iodev->time_io++;  // i/o time stat
                     }
+
+                    if (strcmp(io1->status, "idle") == 0 && queue_length(ioq) > 1) {
+                        queue_dequeue(ioq, (void**)&ptr);
+                        iodev = ptr;
+                        iodev->io_blocks++; // i/o disp stat (increment for when blocked for i/o)
+                        io1->status = "active";
+                        iodev->time_remain--;
+                        iodev->time_io++;
+                        if (io1->stop_run == -1) {
+                            //randomom
+                            //i/o in i/o
+                            if (iodev->time_remain == 0) {
+                                io1->stop_run = tick + 1;
+                            } else {
+                                int r = rand();
+                                io1->stop_run = tick + (r % 30 + 1) - 1;
+                            }
+                        }
+                    }
+
                 } else if (queue_length(ioq) > 0 || iodev != NULL) {
                     if (strcmp(io1-> status, "idle") == 0) {
                         queue_dequeue(ioq, (void**)&ptr);
@@ -233,22 +253,21 @@ int main(int argc, char *argv[]) {
     } else if (rr) {
         // TODO: implement rr
         int quantum = 5; // how many units to run for rr
-        int localtick = 0;
+        int localtick = 0; // reset local tick if its = quantum. reset whenver job changes (usually if we set cpu = null, reset localtick)
         while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
             if (DEBUG) {printf("\nTick: %d - ", tick);}
             struct job *ptr;
             int same_tick = 0;
 
             // every 5 ticks while a job is running (resets if a job blocks and a new one takes over), put it back in queue
-            if (localtick > quantum) {
+            if (localtick == quantum) {
                 if (cpu == NULL) {
+                    // if local tick is 5, but cpu is null, just skip
                     localtick = 0;
                     continue;
                 }
                 if (DEBUG) {printf("Putting \"%s\" process back into queue - ", cpu->name);}
-                int index;
-                // finds which job we're doing currently
-
+                // put jop back into queue, set cpu to null.
                 queue_enqueue(readyq, cpu);
                 cpu = NULL;
                 cpu1->status = "idle";
@@ -258,6 +277,7 @@ int main(int argc, char *argv[]) {
             if (strcmp(cpu1->status, "idle") == 0 && (queue_length(readyq) > 0)) {
                 queue_dequeue(readyq, (void **) &ptr);
                 cpu = ptr;
+                localtick = 0;
                 if (DEBUG) {printf("working on %s - ", cpu->name);}
                 cpu->given_cpu++;  // cpu disp stat (increment for when given cpu)
                 cpu1->status = "active";
@@ -269,7 +289,7 @@ int main(int argc, char *argv[]) {
                         //block for i/o
 
                         int r = rand();
-
+                        // random for rr is between 0 and 5 apparently
                         cpu1->stop_run = tick + (r % quantum + 1) - 1;
                         if (DEBUG) {printf("%s stoppin at tick=%d - ", cpu->name, cpu1->stop_run);}
                     }
@@ -309,14 +329,34 @@ int main(int argc, char *argv[]) {
                     if (strcmp(io1->status, "active") == 0) {
                         iodev->time_io++;  // i/o time stat
                     }
+                    // not sure what this does, but added it to reflect changes
+                    if (strcmp(io1->status, "idle") == 0 && queue_length(ioq) > 1) {
+                        queue_dequeue(ioq, (void**)&ptr);
+                        iodev = ptr;
+                        iodev->io_blocks++; // i/o disp stat (increment for when blocked for i/o)
+                        io1->status = "active";
+                        iodev->time_remain--;
+                        iodev->time_io++;
+                        if (io1->stop_run == -1) {
+                            //randomom
+                            //i/o in i/o
+                            if (iodev->time_remain == 0) {
+                                io1->stop_run = tick + 1;
+                            } else {
+                                int r = rand();
+                                io1->stop_run = tick + (r % 30 + 1) - 1;
+                            }
+                        }
+                    }
                 } else if (queue_length(ioq) > 0 || iodev != NULL) {
                     if (strcmp(io1->status, "idle") == 0) {
                         queue_dequeue(ioq, (void **) &ptr);
                         iodev = ptr;
                         iodev->io_blocks++; // i/o disp stat (increment for when blocked for i/o)
                         io1->status = "active";
-                        if (DEBUG) {printf("%s in IOq for %d ticks - ", iodev->name, io1->stop_run);}
+                        if (DEBUG) {printf("%s in IOq for %d ticks - ", iodev->name, io1->stop_run - tick);}
                         iodev->time_remain--;
+                        localtick = 0;
                     }
 
                     if (strcmp(io1->status, "active") == 0) {
@@ -334,8 +374,6 @@ int main(int argc, char *argv[]) {
                         }
 
                     }
-                    if (tick == 33);
-                    if (DEBUG) {printf("%d time units on i/o device - ", io1->stop_run - tick);}
                 }
                 if (tick == io1->stop_run) {
                     queue_enqueue(readyq, iodev);
@@ -347,8 +385,10 @@ int main(int argc, char *argv[]) {
             }
 
             tick++;
-            localtick+=1;
+            localtick++;
+            // tick > 1000 usually means infinite loop, so pause program so we can look at output
             if (tick > 1000) {break;}
+
         }
     } else {
         fprintf(stderr, "Unknown error, neither fcfs nor rr true\n");
