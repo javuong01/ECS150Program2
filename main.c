@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "queue.h"
 #include <errno.h>
+#include <stdbool.h>
 
 /* file 1                   file 4
 editor    5   0.87          biggie    20    0.99
@@ -103,7 +104,18 @@ int main(int argc, char *argv[]) {
     io1->status = "idle";
     cpu1->stop_run = -1;
     io1->stop_run = -1;
-
+    bool rr = false;
+    bool fcfs = false;
+    // find out which option user inputted
+    if (strcmp("-f", argv[1]) == 0) {
+        fcfs = true;
+    } else if (strcmp("-r", argv[1]) == 0) {
+        rr = true;
+    } else {
+        printf("\n\n\nProgram error output (to stderr):\n------------------\n");
+        /* bad option (not -f or -r) */
+        fprintf(stderr, "Usage: %s [-r | -f] file\n", argv[0]);
+    }
 
     queue_t readyq;
     readyq = queue_create();
@@ -119,109 +131,239 @@ int main(int argc, char *argv[]) {
         queue_enqueue(readyq, &arr_job[i]);
     }
 
-    (void) srandom(12345);
-    while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
-        struct job* ptr;
-        int same_tick = 0;
+    (void) srand(12345);
+    int issuecount = 0;
+    if (fcfs) {
+        while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
+            struct job* ptr;
+            int same_tick = 0;
 
 
-        if (strcmp(cpu1->status, "idle") == 0 && (queue_length(readyq) > 0)) {
-            queue_dequeue(readyq, (void**)&ptr);
-            cpu = ptr;
-            cpu->given_cpu++;  // cpu disp stat (increment for when given cpu)
-            cpu1->status = "active";
+            if (strcmp(cpu1->status, "idle") == 0 && (queue_length(readyq) > 0)) {
+                queue_dequeue(readyq, (void**)&ptr);
+                cpu = ptr;
+                cpu->given_cpu++;  // cpu disp stat (increment for when given cpu)
+                cpu1->status = "active";
 
 
-            if (cpu->time_remain > 2) {
-                int r = random();
+                if (cpu->time_remain > 2) {
+                    int r = rand();
 
-                if (cpu->prob_block > (double)r / RAND_MAX ) {
-                    //block for i/o
+                    if (cpu->prob_block > (double)r / RAND_MAX ) {
+                        //block for i/o
 
-                    int r = random();
+                        int r = rand();
 
-                    cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
+                        cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
 
+                    }
+                } else {
+                    if (cpu->time_remain == 0) {
+                        //printf("PRINT stuff\n");
+                        cpu->time_completed = tick; // when done stat
+                        //printf("process ended? 1\n");
+                        cpu = NULL;
+                        cpu1->status = "idle";
+                    }
                 }
-            } else {
+            } else if (cpu != NULL) {
+                cpu->time_remain--;
+                //printf("%d tick cpu with remianing runtime %d\n",tick, cpu->time_remain);
                 if (cpu->time_remain == 0) {
                     //printf("PRINT stuff\n");
                     cpu->time_completed = tick; // when done stat
-                    //printf("process ended? 1\n");
+                    //printf("process ended? 2\n");
                     cpu = NULL;
                     cpu1->status = "idle";
                 }
             }
-        } else if (cpu != NULL) {
-            cpu->time_remain--;
-            //printf("%d tick cpu with remianing runtime %d\n",tick, cpu->time_remain);
-            if (cpu->time_remain == 0) {
-                //printf("PRINT stuff\n");
-                cpu->time_completed = tick; // when done stat
-                //printf("process ended? 2\n");
+
+            if (tick == cpu1->stop_run && cpu->time_remain > 0) {
+                queue_enqueue(ioq, cpu);
                 cpu = NULL;
                 cpu1->status = "idle";
+                same_tick = 1;
             }
-        }
 
-        if (tick == cpu1->stop_run && cpu->time_remain > 0) {
-            queue_enqueue(ioq, cpu);
-            cpu = NULL;
-            cpu1->status = "idle";
-            same_tick = 1;
-        }
-
-
-
-
-        if (queue_length(ioq) > 0 || iodev != NULL) {
-            if (same_tick == 1) {
-                same_tick = 0;
-                if (strcmp(io1->status, "active") == 0){
-                    iodev->time_io++;  // i/o time stat
-                }
-            } else if (queue_length(ioq) > 0 || iodev != NULL) {
-                if (strcmp(io1-> status, "idle") == 0) {
-                    queue_dequeue(ioq, (void**)&ptr);
-                    iodev = ptr;
-                    iodev->io_blocks++; // i/o disp stat (increment for when blocked for i/o)
-                    io1->status = "active";
-                    iodev->time_remain--;
-                }
-
-                if (strcmp(io1->status, "active") == 0){
-                    iodev->time_io++; // i/o time stat  again
-                }
-
-                if (io1->stop_run == -1) {
-                    //random
-                    //i/o in i/o
-                    if (iodev->time_remain == 0) {
-                        io1->stop_run = tick + 1;
-                    } else {
-                        int r = random();
-                        io1->stop_run = tick + (r % 30 + 1) - 1;
+            if (queue_length(ioq) > 0 || iodev != NULL) {
+                if (same_tick == 1) {
+                    same_tick = 0;
+                    if (strcmp(io1->status, "active") == 0){
+                        iodev->time_io++;  // i/o time stat
+                    }
+                } else if (queue_length(ioq) > 0 || iodev != NULL) {
+                    if (strcmp(io1-> status, "idle") == 0) {
+                        queue_dequeue(ioq, (void**)&ptr);
+                        iodev = ptr;
+                        iodev->io_blocks++; // i/o disp stat (increment for when blocked for i/o)
+                        io1->status = "active";
+                        iodev->time_remain--;
                     }
 
-                }
+                    if (strcmp(io1->status, "active") == 0){
+                        iodev->time_io++; // i/o time stat  again
+                    }
 
+                    if (io1->stop_run == -1) {
+                        //random
+                        //i/o in i/o
+                        if (iodev->time_remain == 0) {
+                            io1->stop_run = tick + 1;
+                        } else {
+                            int r = rand();
+                            io1->stop_run = tick + (r % 30 + 1) - 1;
+                        }
+
+                    }
+
+                    if (tick == io1->stop_run) {
+                        queue_enqueue(readyq, iodev);
+                        iodev = NULL;
+                        io1->status = "idle";
+                        io1->stop_run = -1;
+                    }
+
+
+
+                    //printf("%d tick   has %d time units on i/o device\n", tick, io1->stop_run - tick);
+                }
+            }
+
+
+
+            tick++;
+        }
+    } else if (rr) {
+        // TODO: implement rr
+        int q = 5; // how many units to run for rr
+        int localtick = 0;
+        int currProcessIndex = 0;
+        while (cpu!= NULL || iodev!=NULL || queue_length(readyq) > 0 || queue_length(ioq) > 0) {
+            struct job *ptr;
+            int same_tick = 0;
+
+            // every 5 ticks while a job is running (resets if a job blocks and a new one takes over), put it back in queue
+            if (localtick > 5) {
+                if (cpu == NULL) {
+                    localtick = 0;
+                    continue;
+                }
+                printf("Putting \"%s\" process back into queue\n", cpu->name);
+                int index;
+                // finds which job we're doing currently
+                for (int i = 0; i < jobCounter; i++) {
+                    if (strcmp(cpu->name, arr_job[i].name) == 0) {
+                        index = i;
+                        break;
+                    }
+                }
+                queue_enqueue(readyq, &arr_job[index]);
+                cpu1->status = "idle";
+                localtick = 0;
+                tick++;
+                continue;
+            }
+            localtick+=1;
+
+            if (strcmp(cpu1->status, "idle") == 0 && (queue_length(readyq) > 0)) {
+                queue_dequeue(readyq, (void **) &ptr);
+                cpu = ptr;
+                cpu->given_cpu++;  // cpu disp stat (increment for when given cpu)
+                cpu1->status = "active";
+                currProcessIndex+=1;
+
+                if (cpu->time_remain > 1) {
+                    int r = rand();
+
+                    if (cpu->prob_block > (double) r / RAND_MAX) {
+                        //block for i/o
+
+                        int r = rand();
+
+                        cpu1->stop_run = tick + (r % cpu->time_remain + 1) - 1;
+
+                    }
+                } else {
+                    if (cpu->time_remain == 0) {
+                        printf("PRINT stuff\n");
+                        cpu->time_completed = tick; // when done stat
+                        printf("process ended? 1\n");
+                        cpu = NULL;
+                        cpu1->status = "idle";
+                        localtick = 0;
+                    }
+                }
+            } else if (cpu != NULL) {
+                cpu->time_remain--;
+                printf("%d tick cpu with remianing runtime %d\n",tick, cpu->time_remain);
+                if (cpu->time_remain == 0) {
+                    printf("PRINT stuff\n");
+                    cpu->time_completed = tick; // when done stat
+                    printf("process ended? 2\n");
+                    cpu = NULL;
+                    cpu1->status = "idle";
+                    localtick = 0;
+                }
+            }
+            if (cpu == NULL) {
+                printf("issue here");
+                issuecount+=1;
+            }
+            if (tick == cpu1->stop_run && cpu->time_remain > 0) {
+                queue_enqueue(ioq, cpu);
+                cpu = NULL;
+                cpu1->status = "idle";
+                same_tick = 1;
+                localtick = 0;
+            }
+
+            if (queue_length(ioq) > 0 || iodev != NULL) {
+                if (same_tick == 1) {
+                    same_tick = 0;
+                    if (strcmp(io1->status, "active") == 0) {
+                        iodev->time_io++;  // i/o time stat
+                    }
+                } else if (queue_length(ioq) > 0 || iodev != NULL) {
+                    if (strcmp(io1->status, "idle") == 0) {
+                        queue_dequeue(ioq, (void **) &ptr);
+                        iodev = ptr;
+                        iodev->io_blocks++; // i/o disp stat (increment for when blocked for i/o)
+                        io1->status = "active";
+                        iodev->time_remain--;
+                    }
+
+                    if (strcmp(io1->status, "active") == 0) {
+                        iodev->time_io++; // i/o time stat  again
+                    }
+
+                    if (io1->stop_run == -1) {
+                        //random
+                        //i/o in i/o
+                        if (iodev->time_remain == 0) {
+                            io1->stop_run = tick + 1;
+                        } else {
+                            int r = rand();
+                            io1->stop_run = tick + (r % 30 + 1) - 1;
+                        }
+
+                    }
+                    if (tick == 33);
+                    printf("%d tick   has %d time units on i/o device\n", tick, io1->stop_run - tick);
+                }
                 if (tick == io1->stop_run) {
                     queue_enqueue(readyq, iodev);
                     iodev = NULL;
                     io1->status = "idle";
                     io1->stop_run = -1;
                 }
-
-
-
-                //printf("%d tick   has %d time units on i/o device\n", tick, io1->stop_run - tick);
             }
+
+            tick++;
         }
-
-
-
-        tick++;
+    } else {
+        fprintf(stderr, "Unknown error, neither fcfs nor rr true\n");
     }
+
 
     /*
        * printing process information
